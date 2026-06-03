@@ -48,7 +48,7 @@
                 return alert('Preencha todos os campos!');
             }
             
-            const { error } = await supabaseClient.from('Table de lotes agrícolas').insert([{ 
+            const { error } = await supabaseClient.from('lotes').insert([{ 
                 nome: nomeInput,
                 culture: culturaInput,
                 tamanho: parseFloat(tamanhoInput)
@@ -66,7 +66,7 @@
         }
 
         async function carregar() {
-            const { data, error } = await supabaseClient.from('Table de lotes agrícolas').select('*');
+            const { data, error } = await supabaseClient.from('lotes').select('*');
             if (error) {
                 document.getElementById('lista').innerHTML = "<p class='text-red-400'>Erro ao conectar. Verifique o banco.</p>";
                 console.error(error);
@@ -76,10 +76,17 @@
                 document.getElementById('lista').innerHTML = data.map(l => `
                     <div class="p-3 bg-gray-700 rounded border border-gray-600 mb-2">
                         <p class="font-bold text-white">${l.nome}</p>
-                        <p class="text-sm text-gray-300">Cultura: ${l.culture} | Tamanho: ${l.tamanho} ha</p>
+                        <p class="text-sm text-gray-300">Cultura: ${l.culture || 'Não informada'} | Tamanho: ${l.tamanho || 0} ha</p>
                     </div>
                 `).join('');
             } else {
-                document.getElementById('lista').innerHTML = "<p class='text-gray-
+                document.getElementById('lista').innerHTML = "<p class='text-gray-500 italic'>Nenhum lote cadastrado.</p>";
+            }
+        }
+        
+        carregar();
+    </script>
+</body>
+</html>
 
 
