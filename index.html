@@ -2,91 +2,103 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Projeto AGR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu To Do</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 40px auto; padding: 20px; background: #f4f4f9; }
+        .box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input, button { width: 100%; padding: 10px; margin: 5px 0; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .hidden { display: none; }
+        ul { list-style: none; padding: 0; }
+        li { background: #eee; padding: 10px; margin: 5px 0; border-radius: 4px; }
+    </style>
 </head>
-<body class="bg-gray-900 text-white p-10">
+<body>
 
-    <div class="max-w-xl mx-auto bg-gray-800 p-6 rounded-lg border border-gray-700">
-        <h1 class="text-2xl font-bold text-green-500 mb-6">🌾 Projeto AGR - Cadastro</h1>
+    <!-- TELA DE LOGIN / CADASTRO -->
+    <div id="auth-screen" class="box">
+        <h2>Meu To Do - Entrar</h2>
+        <input type="email" id="email" placeholder="E-mail">
+        <input type="password" id="password" placeholder="Senha">
+        <button onclick="login()">Entrar</button>
+        <button onclick="register()" style="background: #28a745;">Criar Nova Conta</button>
+    </div>
+
+    <!-- TELA HOME -->
+    <div id="home-screen" class="box hidden">
+        <h2>Minhas Tarefas</h2>
+        <p>Logado como: <strong id="user-email"></strong> (<a href="#" onclick="logout()">Sair</a>)</p>
         
-        <div class="space-y-4">
-            <div>
-                <label class="block text-xs text-gray-400 mb-1">Nome do Lote</label>
-                <input id="nome" type="text" placeholder="Ex: Talhão Alfa" class="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none">
-            </div>
-            <div>
-                <label class="block text-xs text-gray-400 mb-1">Cultura</label>
-                <input id="cultura" type="text" placeholder="Ex: Café" class="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none">
-            </div>
-            <div>
-                <label class="block text-xs text-gray-400 mb-1">Tamanho (Hectares)</label>
-                <input id="tamanho" type="number" step="0.1" placeholder="Ex: 5.5" class="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none">
-            </div>
-            <button onclick="salvar()" class="bg-green-600 p-3 w-full font-bold hover:bg-green-500 rounded transition-colors">CADASTRAR</button>
-        </div>
+        <input type="text" id="nova-tarefa" placeholder="Digite uma nova tarefa...">
+        <button onclick="addTarefa()">Adicionar Tarefa</button>
 
-        <div class="mt-8">
-            <h2 class="text-lg font-semibold mb-3 text-gray-300">Lotes no Banco:</h2>
-            <div id="lista" class="space-y-2 text-gray-400">Buscando dados...</div>
-        </div>
+        <ul id="lista-tarefas"></ul>
     </div>
 
     <script>
-        const SUPABASE_URL = "https://qlvsvfwdfwimglbxwldy.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_JLiws58NtllaeXuwURAmng_rQ21j--s";
-        
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const SUPABASE_URL = "https://zviwwmdaodwquvmfkgde.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_1lmaVz6LEEAxS8z-9ySe7w_K7jxsplh";
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        async function salvar() {
-            const nomeInput = document.getElementById('nome').value;
-            const culturaInput = document.getElementById('cultura').value;
-            const tamanhoInput = document.getElementById('tamanho').value;
-            
-            if(!nomeInput || !culturaInput || !tamanhoInput) {
-                return alert('Preencha todos os campos!');
-            }
-            
-            const { error } = await supabaseClient.from('lotes').insert([{ 
-                nome: nomeInput,
-                culture: culturaInput,
-                tamanho: parseFloat(tamanhoInput)
-            }]);
-
-            if (error) {
-                alert('Erro ao salvar no banco!');
-                console.error(error);
+        _supabase.auth.onAuthStateChange((event, session) => {
+            if (session) {
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('home-screen').classList.remove('hidden');
+                document.getElementById('user-email').innerText = session.user.email;
+                carregarTarefas();
             } else {
-                document.getElementById('nome').value = '';
-                document.getElementById('cultura').value = '';
-                document.getElementById('tamanho').value = '';
-                carregar();
+                document.getElementById('auth-screen').classList.remove('hidden');
+                document.getElementById('home-screen').classList.add('hidden');
             }
+        });
+
+        async function register() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const { error } = await _supabase.auth.signUp({ email, password });
+            if (error) alert(error.message); else alert("Conta criada! Faça o login.");
         }
 
-        async function carregar() {
-            const { data, error } = await supabaseClient.from('lotes').select('*');
-            if (error) {
-                document.getElementById('lista').innerHTML = "<p class='text-red-400'>Erro ao conectar. Verifique o banco.</p>";
-                console.error(error);
-                return;
-            }
-            if (data && data.length > 0) {
-                document.getElementById('lista').innerHTML = data.map(l => `
-                    <div class="p-3 bg-gray-700 rounded border border-gray-600 mb-2">
-                        <p class="font-bold text-white">${l.nome}</p>
-                        <p class="text-sm text-gray-300">Cultura: ${l.culture || 'Não informada'} | Tamanho: ${l.tamanho || 0} ha</p>
-                    </div>
-                `).join('');
-            } else {
-                document.getElementById('lista').innerHTML = "<p class='text-gray-500 italic'>Nenhum lote cadastrado.</p>";
-            }
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const { error } = await _supabase.auth.signInWithPassword({ email, password });
+            if (error) alert(error.message);
         }
-        
-        carregar();
+
+        async function logout() { await _supabase.auth.signOut(); }
+
+        async function carregarTarefas() {
+            const { data, error } = await _supabase.from('tarefas').select('*').order('created_at', { ascending: false });
+            if (error) return console.error(error);
+            
+            const lista = document.getElementById('lista-tarefas');
+            lista.innerHTML = "";
+            data.forEach(t => {
+                const li = document.createElement('li');
+                li.innerText = t.text;
+                lista.appendChild(li);
+            });
+        }
+
+        async function addTarefa() {
+            const input = document.getElementById('nova-tarefa');
+            if (!input.value.trim()) return;
+
+            const user = (await _supabase.auth.getUser()).data.user;
+            
+            const { error } = await _supabase.from('tarefas').insert({ 
+                text: input.value, 
+                user_id: user.id 
+            });
+
+            if (error) alert(error.message);
+            input.value = "";
+            carregarTarefas();
+        }
     </script>
 </body>
 </html>
-
-
